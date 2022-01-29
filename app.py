@@ -3,7 +3,7 @@ from flask import jsonify
 from config import DefaultConfig
 
 
-app = create_flask_app(DefaultConfig, 'HEART_BEAT_SETTING')
+app = create_flask_app(DefaultConfig)
 
 
 @app.route('/')
