@@ -24,3 +24,21 @@ class UserDashboard(Resource):
             return {'message': 'User Not Found'}, 200
         else:
             return {'message': {'click_time': user_target.click_time, 'user_picture': user_target.picture}}, 200
+
+
+class Dashboard(Resource):
+
+    def post(self):
+        user_top6 = UserBasic.query.limit(6).all()
+
+        user_list = []
+
+        for user in user_top6:
+            user_list.append({
+                "user_name": user.name,
+                "user_id": user.id,
+                "user_photo": user.picture
+            })
+
+        return {'message': user_list}, 200
+
