@@ -10,4 +10,6 @@ dashboard_api.representation('application/json')(output_json)
 
 dashboard_api.add_resource(dashboard.Dashboard, '/', endpoint='User_List')
 
-dashboard_api.add_resource(dashboard.UserDashboard, '/user', endpoint='User_Dash_Board')
+dashboard_api.add_resource(dashboard.Authorization, '/login', endpoint='User_Log_In')
+
+dashboard_api.add_resource(dashboard.UserDashboard, '/user', endpoint='User_Dashboard')

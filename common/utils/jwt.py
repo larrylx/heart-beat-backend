@@ -14,7 +14,7 @@ def generate_jwt(payload, secret=None):
         secret = current_app.config['JWT_SECRET']
 
     token = jwt.encode(payload, secret, algorithm='HS256')
-    return token.decode()
+    return token
 
 
 def verify_jwt(token, secret=None):
@@ -28,7 +28,7 @@ def verify_jwt(token, secret=None):
         secret = current_app.config['JWT_SECRET']
 
     try:
-        payload = jwt.decode(token, secret, algorithm=['HS256'])
+        payload = jwt.decode(token, secret, algorithms=['HS256'])
     except jwt.PyJWTError:
         payload = None
 
