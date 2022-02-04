@@ -3,6 +3,7 @@ from flask import Flask
 from common.db import db
 from dashboard import dashboard_bp
 from common.utils.middlewares import token_validation
+from common.utils.snowflake import IdWorker
 from common.scheduler import scheduler
 
 
@@ -25,5 +26,10 @@ def create_flask_app(config, env_config_file=None):
 
     # init database
     db.init_app(app)
+
+    # Register Snowflake to app
+    app.snowflake = IdWorker(app.config['DATACENTER_ID'],
+                             app.config['WORKER_ID'],
+                             app.config['SEQUENCE'])
 
     return app

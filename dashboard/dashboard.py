@@ -44,19 +44,23 @@ class Authorization(Resource):
             return {'message': {'token': token}}, 200
 
 
-class Dashboard(Resource):
-    """
-    Post: User Sign up
-    Put: Select User Page
-    """
+class SignUp(Resource):
     def post(self):
         """
         User Sign Up
         :return:
         """
-        pass
+        user_id = current_app.snowflake.get_id()
 
-    def put(self):
+        return str(user_id), 201
+
+
+class MainDashboard(Resource):
+    """
+    Post: User Sign up
+    Put: Select User Page
+    """
+    def post(self):
         """
         Display List of Users
         :return: List of Users
