@@ -3,6 +3,7 @@ from flask import Flask
 from common.db import db
 from dashboard import dashboard_bp
 from common.utils.middlewares import token_validation
+from common.scheduler import scheduler
 
 
 def create_flask_app(config, env_config_file=None):
@@ -14,6 +15,10 @@ def create_flask_app(config, env_config_file=None):
 
     # Register Hook
     app.before_request(token_validation)
+
+    # Register APScheduler
+    scheduler.init_app(app)
+    scheduler.start()
 
     # Register Dashboard Blue Print
     app.register_blueprint(dashboard_bp)

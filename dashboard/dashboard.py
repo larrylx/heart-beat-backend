@@ -1,13 +1,16 @@
 from flask import current_app, g
 from flask_restful import Resource
 from flask_restful.reqparse import RequestParser
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
+from sqlalchemy.orm import load_only
 
 from common.utils.jwt import generate_jwt
 from common.utils.decorators import login_required
 from common.db import db
 from common.db.user_basic import UserBasic
 from common.db.click_log import ClickLog
+from common.scheduler import scheduler
+from common.scheduler.tasks import check_in_alert_user
 
 
 class Authorization(Resource):
@@ -43,7 +46,8 @@ class Authorization(Resource):
 
 class Dashboard(Resource):
     """
-    Select User Page/User Sign up Page
+    Post: User Sign up
+    Put: Select User Page
     """
     def post(self):
         """
@@ -73,33 +77,66 @@ class Dashboard(Resource):
 
 class UserDashboard(Resource):
     """
-    Handle User Click
+    Post: Handle User Click
+    Put: Display User Dashboard Info
     """
     decorators = [login_required]
 
+    def _seconds_to_dhms(self, seconds):
+        days = seconds // (3600 * 24)
+        hours = (seconds // 3600) % 24
+        minutes = (seconds // 60) % 60
+        seconds = round(seconds % 60)
+        return days, hours, minutes, seconds
+
     def post(self):
+        user_target = UserBasic.query\
+            .options(load_only(UserBasic.id, UserBasic.click_gap))\
+            .filter_by(id=g.user_id)\
+            .first()
+
         now = datetime.now(timezone.utc)
+        # reminder_time = now + timedelta(hours=user_target.click_gap)
+        reminder_time = now + timedelta(seconds=8)
+
         new_click = ClickLog(user_id=g.user_id, click_time=now)
         db.session.add(new_click)
         db.session.commit()
-        return {'message': {'Check In Succeed': now.strftime("%m/%d/%Y, %H:%M:%S")}}, 201
+
+        reminder = scheduler.add_job(
+            func=check_in_alert_user,
+            args=g.user_id,
+            trigger="date",
+            run_date=reminder_time,
+            id=f"check_in_alert_{g.user_id}",
+            name=f"Alert User {g.user_id} to check-in in {user_target.click_gap} hour(s)",
+            replace_existing=True,
+        )
+
+        return {'message': {'Check In Succeed': now.strftime("%m/%d/%Y, %H:%M:%S"),
+                            'Scheduler Add': reminder.name}}, 201
 
     def put(self):
         user_target = UserBasic.query.filter_by(id=g.user_id).first()
-        last_check_in = ClickLog.query\
-            .filter_by(user_id=g.user_id)\
-            .order_by(ClickLog.click_time.desc())\
-            .limit(5)\
+
+        last_check_in = ClickLog.query \
+            .filter_by(user_id=g.user_id) \
+            .order_by(ClickLog.click_time.desc()) \
+            .limit(5) \
             .all()
 
         last_check_list = [record.click_time.strftime("%m/%d/%Y, %H:%M:%S") for record in last_check_in]
 
-        if user_target is None:
-            return {'message': 'Unauthorized'}, 401
+        time_diff = datetime.now(timezone.utc).replace(tzinfo=None) - last_check_in[0].click_time
 
-        else:
-            return {'message': {
-                'click_gap': user_target.click_gap,
-                'user_email': user_target.remind_email,
-                'last_five_check_in': last_check_list
-            }}, 200
+        days, hours, minutes, seconds = self._seconds_to_dhms(time_diff.total_seconds())
+
+        return {'message': {
+            'click_gap': user_target.click_gap,
+            'user_email': user_target.remind_email,
+            'last_five_check_in': last_check_list,
+            'Days since Last Check In': days,
+            'Hors since Last Check In': hours,
+            'Mins since Last Check In': minutes,
+            'Secs since Last Check In': seconds,
+        }}, 200
