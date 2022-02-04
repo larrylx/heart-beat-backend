@@ -13,3 +13,4 @@ six==1.16.0
 SQLAlchemy==1.4.31
 Werkzeug==2.0.2
 PyJWT~=2.3.0
+Flask-APScheduler~=1.12.3
